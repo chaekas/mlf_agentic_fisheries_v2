@@ -1,0 +1,22 @@
+services:
+
+  postgres:
+    image: pgvector/pgvector:pg18
+
+    container_name: mlf_fisheries_postgres
+
+    restart: unless-stopped
+
+    ports:
+      - "5433:5432"
+
+    environment:
+      POSTGRES_DB: mlf_fisheries
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mlf_password
+
+    volumes:
+      - mlf_fisheries_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  mlf_fisheries_postgres_data:
