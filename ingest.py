@@ -89,13 +89,37 @@ def load_pdf(path: Path) -> List[Document]:
 
 def load_docx(path: Path) -> List[Document]:
     document = DocxDocument(str(path))
-    paragraphs = [p.text for p in document.paragraphs if p.text.strip()]
+
+    paragraphs = [
+        p.text.strip()
+        for p in document.paragraphs
+        if p.text.strip()
+    ]
+
     table_rows = []
+
     for table in document.tables:
         for row in table.rows:
-            table_rows.append(" | ".join(cell.text.strip() for cell in row.cells))
-    text = "\n".join(paragraphs + table_rows)
-    return text_document(text, path.name, {"file_type": "docx"})
+            row_text = " | ".join(
+                cell.text.strip()
+                for cell in row.cells
+            )
+
+            if row_text.strip():
+                table_rows.append(row_text)
+
+    text = "\n".join(
+        paragraphs + table_rows
+    )
+
+    return text_document(
+        text,
+        path.name,
+        {
+            "file_type": "docx",
+            "document": path.name,
+        },
+    )
 
 
 def load_spreadsheet(path: Path) -> List[Document]:

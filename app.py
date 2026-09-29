@@ -53,7 +53,10 @@ from langchain_postgres import PGVector
 from langgraph.graph import END, StateGraph
 
 from langgraph.checkpoint.postgres import PostgresSaver
-from langchain_ollama import ChatOllama
+
+from langchain_groq import ChatGroq
+from psycopg_pool import ConnectionPool
+
 
 
 from ingest import (
@@ -99,11 +102,13 @@ COLLECTION = os.getenv(
     "mlf_fisheries_regulations",
 )
 
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
-OLLAMA_BASE_URL = os.getenv(
-    "OLLAMA_BASE_URL",
-    "http://127.0.0.1:11434"
+GROQ_MODEL = os.getenv(
+    "GROQ_MODEL",
+    "openai/gpt-oss-120b"
 )
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
 
 EMBEDDING_MODEL = os.getenv(
     "EMBEDDING_MODEL",
@@ -148,31 +153,33 @@ def get_embeddings():
 def get_vectorstore():
 
     return PGVector(
-
         embeddings=get_embeddings(),
-
         collection_name=COLLECTION,
-
         connection=DATABASE_URL,
-
         use_jsonb=True,
-
-        create_extension=True,
+        create_extension=False,
     )
 
 
+
+
 # ============================================================
-# 7. OLLAMA LLM
+# 7. GROQ LLM
 # ============================================================
 
 @st.cache_resource
 def get_llm():
-    return ChatOllama(
-        model=OLLAMA_MODEL,
-        base_url=OLLAMA_BASE_URL,
+
+    if not GROQ_API_KEY:
+        raise RuntimeError(
+            "GROQ_API_KEY is missing from the .env file."
+        )
+
+    return ChatGroq(
+        model=GROQ_MODEL,
         temperature=0.1,
-        num_predict=250,
-        keep_alive="10m",
+        max_retries=2,
+        api_key=GROQ_API_KEY,
     )
 
 # ============================================================
@@ -1505,28 +1512,31 @@ def get_graph():
     # --------------------------------------------------------
     # PostgreSQL connection pool
     # --------------------------------------------------------
-
     from psycopg_pool import ConnectionPool
 
     pool = ConnectionPool(
         conninfo=CHECKPOINT_DATABASE_URL,
         min_size=1,
         max_size=5,
+        kwargs={
+            "autocommit": True,
+        },
         open=True,
     )
 
     # --------------------------------------------------------
     # LangGraph PostgreSQL checkpointer
     # --------------------------------------------------------
-
     saver = PostgresSaver(pool)
 
+    # IMPORTANT:
+    # PostgresSaver.setup() contains CREATE INDEX CONCURRENTLY.
+    # PostgreSQL requires this to run outside a transaction.
     saver.setup()
 
     # --------------------------------------------------------
     # Create graph
     # --------------------------------------------------------
-
     builder = StateGraph(AgentState)
 
     builder.add_node(
@@ -1567,8 +1577,6 @@ def get_graph():
         "language"
     )
 
-    # Language/intent detection decides whether retrieval
-    # is necessary.
     builder.add_conditional_edges(
         "language",
         route_after_language,
@@ -1610,8 +1618,6 @@ def get_graph():
     return builder.compile(
         checkpointer=saver
     )
-
-
 # 19. RENDER SOURCES
 # ============================================================
 
@@ -1774,9 +1780,7 @@ def main():
             "⚙️ Configuration"
         )
 
-        st.write(
-             f"Model: `{OLLAMA_MODEL}`"
-        )
+       
 
         st.write(
             f"Embedding: "

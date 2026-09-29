@@ -1,0 +1,7 @@
+.venv/
+.env
+__pycache__/
+*.pyc
+mlf_fisheries.dump
+.streamlit/secrets.toml
+data/uploads/
