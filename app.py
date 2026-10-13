@@ -254,42 +254,62 @@ def render_auth():
                 st.session_state.show_register = False
                 st.rerun()
         else:
+            
+      
+           
+        
             st.subheader("Welcome!")
             st.caption("Sign in to access the Ministry knowledge assistant.")
+
             notice = st.session_state.pop("auth_notice", None)
             if notice:
                 st.success(notice)
+
             with st.form("login_form"):
-                username = st.text_input("Username", placeholder="Enter your username")
-                password = st.text_input("Password", type="password", placeholder="Enter your password")
-                submitted = st.form_submit_button("Sign in", type="primary", use_container_width=True)
-            
-        if submitted:
-            role, saved_username = authenticate(username, password)
+                username = st.text_input(
+                    "Username",
+                    placeholder="Enter your username",
+                    key="login_username",
+                )
+                password = st.text_input(
+                    "Password",
+                    type="password",
+                    placeholder="Enter your password",
+                    key="login_password",
+                )
+                submitted = st.form_submit_button(
+                    "Sign in",
+                    type="primary",
+                    use_container_width=True,
+                )
 
-            if role:
-                st.session_state.authenticated = True
-                st.session_state.username = saved_username
-                st.session_state.role = role
+            if submitted:
+                role, saved_username = authenticate(username, password)
 
-                # Clear temporary login and registration messages.
-                st.session_state.pop("show_register", None)
-                st.session_state.pop("auth_notice", None)
-                st.session_state.pop("pending_question", None)
+                if role:
+                    st.session_state.authenticated = True
+                    st.session_state.username = saved_username
+                    st.session_state.role = role
+                    st.session_state.messages = []
+                    st.session_state.thread_id = str(time.time_ns())
+                    st.session_state.active_page = "Home"
 
-                # Start a clean session and open the Home page.
-                st.session_state.messages = []
-                st.session_state.thread_id = str(time.time_ns())
-                st.session_state.active_page = "Home"
+                    st.session_state.pop("show_register", None)
+                    st.session_state.pop("auth_notice", None)
+                    st.session_state.pop("pending_question", None)
 
-                # Go directly into the application.
-                st.rerun()
-            else:
-                st.error("Invalid username or password.")
+                    st.rerun()
+                else:
+                    st.error("Invalid username or password.")
 
-            if st.button("New here? Create an account", use_container_width=True):
+            if st.button(
+                "New here? Create an account",
+                key="open_register_button",
+                use_container_width=True,
+            ):
                 st.session_state.show_register = True
                 st.rerun()
+
         
 
 
