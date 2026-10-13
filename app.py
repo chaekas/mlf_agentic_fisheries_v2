@@ -48,6 +48,7 @@ TOP_K = max(1, int(os.getenv("TOP_K", "6")))
 MIN_RELEVANCE = float(os.getenv("MIN_RELEVANCE", "0.48"))
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "data/uploads"))
 
+
 def get_setting(name: str, default: str = "") -> str:
     """Read configuration from Streamlit Secrets or environment variables."""
     try:
@@ -58,10 +59,11 @@ def get_setting(name: str, default: str = "") -> str:
         pass
 
     return os.getenv(name, default).strip()
-
-
 ADMIN_USERNAME = get_setting("ADMIN_USERNAME", "admin").lower()
 ADMIN_PASSWORD = get_setting("ADMIN_PASSWORD", "")
+
+
+
 
 
 
@@ -75,69 +77,402 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+
+    # Initialize the theme control before rendering the CSS.
+st.session_state.setdefault("mlf_dark_toggle", False)
+
+    # Theme colors
+if st.session_state["mlf_dark_toggle"]:
+        theme_vars = """
+        <style>
+        :root {
+            --mlf-bg: #101827;
+            --mlf-surface: #172338;
+            --mlf-text: #edf3fb;
+            --mlf-muted: #b8c6d9;
+            --mlf-border: #35465e;
+            --mlf-input: #202e44;
+            --mlf-gold: #f8b02a;
+            --mlf-blue: #174a7e;
+        }
+        </style>
+        """
+else:
+        theme_vars = """
+        <style>
+        :root {
+            --mlf-bg: #f5f7fb;
+            --mlf-surface: #ffffff;
+            --mlf-text: #172033;
+            --mlf-muted: #596b82;
+            --mlf-border: #d9e2ef;
+            --mlf-input: #ffffff;
+            --mlf-gold: #f8b02a;
+            --mlf-blue: #174a7e;
+        }
+        </style>
+        """
+
 CSS = """
-<style>
-:root { --mlf-navy:#06284a; --mlf-blue:#0866c6; --mlf-pale:#eef5ff; }
-[data-testid="stAppViewContainer"] { background:#f7f9fc; }
-[data-testid="stHeader"] { background:rgba(255,255,255,.96); }
-[data-testid="stSidebar"] {
-  background:linear-gradient(180deg,#062746 0%,#07385a 72%,#062746 100%);
-  border-right:1px solid #d8e3f0;
-}
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"],
-[data-testid="stSidebar"] p,
-[data-testid="stSidebar"] label,
-[data-testid="stSidebar"] .stCaption { color:#eef6ff !important; }
-[data-testid="stSidebar"] h1,[data-testid="stSidebar"] h2,
-[data-testid="stSidebar"] h3 { color:white !important; }
-[data-testid="stSidebar"] hr { border-color:rgba(255,255,255,.18); }
-[data-testid="stSidebar"] [data-testid="stButton"] button {
-  width:100%; text-align:left; min-height:42px; border-radius:9px;
-  border:1px solid rgba(255,255,255,.19); background:rgba(255,255,255,.055);
-  color:#f5f9ff; font-weight:550;
-}
-[data-testid="stSidebar"] [data-testid="stButton"] button:hover {
-  background:#1769c2; border-color:#4b9aff; color:white;
-}
-.mlf-brand { padding:10px 5px 20px; border-bottom:1px solid #31516e; margin-bottom:16px; }
-.mlf-brand-row { display:flex; align-items:center; gap:11px; }
-.mlf-crest { font-size:34px; line-height:1; }
-.mlf-brand-title { color:white; font-size:15px; line-height:1.25; font-weight:750; }
-.mlf-brand-sub { color:#c1d5e6; font-size:10px; line-height:1.4; margin-top:8px; }
-.mlf-profile { display:flex; gap:10px; align-items:center; padding:12px 4px; margin-top:12px; }
-.mlf-avatar { width:38px; height:38px; border-radius:50%; display:flex; align-items:center;
-  justify-content:center; background:#079b66; color:white; font-weight:800; flex-shrink:0; }
-.mlf-profile-name { color:white; font-size:12px; font-weight:700; overflow-wrap:anywhere; }
-.mlf-profile-role { color:#c1d5e6; font-size:10px; margin-top:3px; }
-.mlf-topbar { background:white; border:1px solid #e3eaf3; border-radius:13px;
-  padding:13px 18px; margin-bottom:14px; display:flex; align-items:center; gap:12px; }
-.mlf-bot { width:42px; height:42px; border-radius:50%; display:flex; align-items:center;
-  justify-content:center; background:#0875e1; color:white; font-size:22px; flex-shrink:0; }
-.mlf-app-title { font-size:20px; color:#132e4d; font-weight:800; line-height:1.2; }
-.mlf-app-subtitle { font-size:11px; color:#5f7188; margin-top:4px; }
-.mlf-chat-panel { background:#fff; border:1px solid #e5ebf3; border-radius:14px;
-  min-height:60vh; padding:22px; box-shadow:0 2px 12px rgba(20,50,90,.035); }
-.mlf-welcome { background:#edf4ff; border:1px solid #e0ebfa; border-radius:14px;
-  padding:18px 20px; max-width:680px; color:#172d49; line-height:1.55; }
-.mlf-welcome p { margin:5px 0; }
-.mlf-shortcut { border-radius:11px; padding:14px 12px; border:1px solid #e3eaf4;
-  min-height:78px; background:#fff; font-weight:700; font-size:12px; }
-.mlf-shortcut-green { background:#edfff4; border-color:#d0f2dd; color:#117344; }
-.mlf-shortcut-blue { background:#edf7ff; border-color:#d8eaff; color:#145ca5; }
-.mlf-shortcut-gold { background:#fff8e9; border-color:#f5e7c6; color:#96610b; }
-.mlf-shortcut-purple { background:#f6f0ff; border-color:#e9ddff; color:#6139bb; }
-.mlf-login-card { background:white; border:1px solid #e0e8f2; border-radius:18px;
-  padding:28px; box-shadow:0 10px 34px rgba(10,43,78,.08); }
-div[data-testid="stChatMessage"] { border-radius:12px; }
-[data-testid="stChatInput"] { border-color:#dbe4f0; }
-footer { visibility:hidden; }
-@media(max-width:700px) {
- .mlf-topbar { padding:10px; } .mlf-app-title {font-size:17px;}
- .mlf-chat-panel {padding:12px;} .mlf-welcome {padding:14px;}
-}
-</style>
-"""
-st.markdown(CSS, unsafe_allow_html=True)
+    <style>
+    /* Main application */
+    [data-testid="stAppViewContainer"] {
+        background: var(--mlf-bg);
+        color: var(--mlf-text);
+    }
+
+    [data-testid="stHeader"] {
+        background: var(--mlf-bg);
+    }
+
+   
+    /* ===== MLF Sidebar: Forest Green + Gold ===== */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(
+            180deg,
+            #123D2B 0%,
+            #1C5139 55%,
+            #123D2B 100%
+        ) !important;
+        border-right: 2px solid #F4C542 !important;
+    }
+
+    /* Sidebar text */
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"],
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] .stCaption {
+        color: #FFFFFF !important;
+    }
+
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3 {
+        color: #F4C542 !important;
+    }
+
+    /* Navigation buttons */
+    [data-testid="stSidebar"] [data-testid="stButton"] button {
+        background: rgba(255,255,255,0.08) !important;
+        color: #FFFFFF !important;
+        border: 1px solid rgba(255,255,255,0.25) !important;
+        border-radius: 10px !important;
+        min-height: 43px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    /* Yellow hover */
+    [data-testid="stSidebar"] [data-testid="stButton"] button:hover {
+        background: #F4C542 !important;
+        color: #123D2B !important;
+        border-color: #F4C542 !important;
+    }
+
+    /* Sidebar divider */
+    [data-testid="stSidebar"] hr {
+        border-color: rgba(244,197,66,0.45) !important;
+    }
+
+    /* Ministry branding */
+    .mlf-brand {
+        padding: 10px 5px 20px;
+        border-bottom: 1px solid rgba(244,197,66,0.5);
+        margin-bottom: 16px;
+    }
+
+    .mlf-brand-title {
+        color: #FFFFFF !important;
+        font-size: 15px;
+        line-height: 1.4;
+        font-weight: 750;
+    }
+
+    .mlf-brand-sub {
+        color: #E8F3E9 !important;
+        font-size: 11px;
+        line-height: 1.5;
+        margin-top: 8px;
+    }
+
+    /* User avatar */
+    .mlf-avatar {
+        background: #F4C542 !important;
+        color: #123D2B !important;
+    }
+
+    /* Keep the sidebar expand/collapse controls visible */
+    [data-testid="stSidebarCollapsedControl"],
+    [data-testid="collapsedControl"],
+    [data-testid="stSidebar"] button[kind="header"],
+    [data-testid="stHeader"] button {
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+
+
+    /* Text inputs, passwords, search, text areas and select boxes */
+    [data-testid="stAppViewContainer"] input,
+    [data-testid="stAppViewContainer"] textarea,
+    [data-testid="stAppViewContainer"] [data-baseweb="select"] > div {
+        background-color: var(--mlf-input);
+        color: var(--mlf-text);
+        border-color: var(--mlf-border);
+    }
+
+    /* Input labels and general text */
+    [data-testid="stAppViewContainer"] label,
+    [data-testid="stAppViewContainer"] p,
+    [data-testid="stAppViewContainer"] .stMarkdown,
+    [data-testid="stAppViewContainer"] .stCaption {
+        color: var(--mlf-text);
+    }
+
+    [data-testid="stAppViewContainer"] input::placeholder,
+    [data-testid="stAppViewContainer"] textarea::placeholder {
+        color: var(--mlf-muted);
+        opacity: 1;
+    }
+
+    /* Chat input */
+    [data-testid="stChatInput"] {
+        background: var(--mlf-surface);
+        border: 1px solid var(--mlf-border);
+        border-radius: 12px;
+    }
+
+    [data-testid="stChatInput"] textarea {
+        background: transparent;
+        color: var(--mlf-text);
+    }
+
+    /* Main buttons */
+    [data-testid="stAppViewContainer"] [data-testid="stButton"] button {
+        border-radius: 9px;
+        transition: all .2s ease;
+    }
+
+    [data-testid="stAppViewContainer"] [data-testid="stButton"] button[kind="primary"] {
+        background: #174a7e;
+        border: 1px solid #174a7e;
+        color: #ffffff;
+    }
+
+    [data-testid="stAppViewContainer"] [data-testid="stButton"] button[kind="primary"]:hover {
+        background: #f8b02a;
+        border-color: #f8b02a;
+        color: #0b1f3a;
+    }
+
+    /* Header and chat layout */
+    .mlf-topbar {
+        background: var(--mlf-surface);
+        border: 1px solid var(--mlf-border);
+        border-radius: 13px;
+        padding: 13px 18px;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .mlf-bot {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #174a7e;
+        color: #ffffff;
+        font-size: 22px;
+        flex-shrink: 0;
+    }
+
+    .mlf-app-title {
+        font-size: 20px;
+        color: var(--mlf-text);
+        font-weight: 800;
+        line-height: 1.2;
+    }
+
+    .mlf-app-subtitle {
+        font-size: 11px;
+        color: var(--mlf-muted);
+        margin-top: 4px;
+    }
+
+    .mlf-chat-panel {
+        background: var(--mlf-surface);
+        border: 1px solid var(--mlf-border);
+        border-radius: 14px;
+        min-height: 60vh;
+        padding: 22px;
+    }
+
+    .mlf-welcome {
+        background: var(--mlf-surface);
+        border: 1px solid var(--mlf-border);
+        border-left: 4px solid #f8b02a;
+        border-radius: 14px;
+        padding: 18px 20px;
+        max-width: 680px;
+        color: var(--mlf-text);
+        line-height: 1.55;
+    }
+
+    .mlf-welcome p {
+        color: var(--mlf-text);
+        margin: 5px 0;
+    }
+
+    .mlf-shortcut {
+        border-radius: 11px;
+        padding: 14px 12px;
+        border: 1px solid var(--mlf-border);
+        min-height: 78px;
+        background: var(--mlf-surface);
+        color: var(--mlf-text);
+        font-weight: 700;
+        font-size: 12px;
+    }
+
+    .mlf-shortcut-green {
+        border-left: 4px solid #16a36a;
+    }
+
+    .mlf-shortcut-blue {
+        border-left: 4px solid #3285d5;
+    }
+
+    .mlf-shortcut-gold {
+        border-left: 4px solid #f8b02a;
+    }
+
+    .mlf-shortcut-purple {
+        border-left: 4px solid #8b72d9;
+    }
+
+    .mlf-login-card {
+        background: var(--mlf-surface);
+        border: 1px solid var(--mlf-border);
+        border-radius: 18px;
+        padding: 28px;
+    }
+
+    .mlf-brand {
+        padding: 10px 5px 20px;
+        border-bottom: 1px solid #35465e;
+        margin-bottom: 16px;
+    }
+
+    .mlf-brand-title {
+        color: #ffffff;
+        font-size: 15px;
+        line-height: 1.4;
+        font-weight: 750;
+    }
+
+    .mlf-brand-sub {
+        color: #d1deed;
+        font-size: 11px;
+        line-height: 1.5;
+        margin-top: 8px;
+    }
+
+    .mlf-profile {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 12px 4px;
+        margin-top: 12px;
+    }
+
+    .mlf-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8b02a;
+        color: #0b1f3a;
+        font-weight: 800;
+        flex-shrink: 0;
+    }
+
+    .mlf-profile-name {
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+    }
+
+    .mlf-profile-role {
+        color: #d1deed;
+        font-size: 10px;
+        margin-top: 3px;
+    }
+
+    div[data-testid="stChatMessage"] {
+        border-radius: 12px;
+    }
+
+    footer {
+        visibility: hidden;
+    }
+
+    @media (max-width: 700px) {
+        .mlf-topbar {
+            padding: 10px;
+        }
+
+        .mlf-app-title {
+            font-size: 17px;
+        }
+
+        .mlf-chat-panel {
+            padding: 12px;
+        }
+
+        .mlf-welcome {
+            padding: 14px;
+        }
+        
+    /* ===== Sidebar Toggle: White Lines ===== */
+    [data-testid="stSidebarCollapsedControl"] button,
+    [data-testid="collapsedControl"] button,
+    [data-testid="stHeader"] button[kind="header"],
+    [data-testid="stSidebar"] button[kind="header"] {
+        color: #FFFFFF !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+
+    /* Make the toggle icon lines white */
+    [data-testid="stSidebarCollapsedControl"] svg,
+    [data-testid="collapsedControl"] svg,
+    [data-testid="stHeader"] button[kind="header"] svg,
+    [data-testid="stSidebar"] button[kind="header"] svg {
+        color: #FFFFFF !important;
+        stroke: #FFFFFF !important;
+        fill: none !important;
+        opacity: 1 !important;
+    }
+
+    /* Keep the toggle visible on hover */
+    [data-testid="stSidebarCollapsedControl"] button:hover,
+    [data-testid="collapsedControl"] button:hover,
+    [data-testid="stHeader"] button[kind="header"]:hover {
+        background-color: #1C5139 !important;
+    }
+
+
+    }
+    </style>
+    """
+
+st.markdown(theme_vars + CSS, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
@@ -931,15 +1266,30 @@ def sidebar():
         )
 
 
+
 def header():
-    st.markdown("""
-    <div class="mlf-topbar">
-      <div class="mlf-bot">🤖</div>
-      <div style="flex:1">
-        <div class="mlf-app-title">MLF Chatbot</div>
-        <div class="mlf-app-subtitle">AI Assistant for Livestock and Fisheries Services</div>
-      </div>
-    </div>""", unsafe_allow_html=True)
+    left, right = st.columns([0.82, 0.18], vertical_alignment="center")
+
+    with left:
+        st.markdown("""
+        <div class="mlf-topbar">
+          <div class="mlf-bot">🤖</div>
+          <div style="flex:1">
+            <div class="mlf-app-title">MLF Chatbot</div>
+            <div class="mlf-app-subtitle">
+              AI Assistant for Livestock and Fisheries Services
+            </div>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with right:
+        st.toggle(
+            "Dark mode",
+            key="mlf_dark_toggle",
+            help="Switch between light and dark appearance",
+        )
+
 
 
 def welcome():
