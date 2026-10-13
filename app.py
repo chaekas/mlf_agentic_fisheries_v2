@@ -47,8 +47,22 @@ EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
 TOP_K = max(1, int(os.getenv("TOP_K", "6")))
 MIN_RELEVANCE = float(os.getenv("MIN_RELEVANCE", "0.48"))
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "data/uploads"))
-ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin").strip().lower()
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "").strip()
+
+def get_setting(name: str, default: str = "") -> str:
+    """Read configuration from Streamlit Secrets or environment variables."""
+    try:
+        value = st.secrets.get(name)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    except Exception:
+        pass
+
+    return os.getenv(name, default).strip()
+
+
+ADMIN_USERNAME = get_setting("ADMIN_USERNAME", "admin").lower()
+ADMIN_PASSWORD = get_setting("ADMIN_PASSWORD", "")
+
 
 
 # ---------------------------------------------------------------------------
